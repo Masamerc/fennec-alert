@@ -1,31 +1,20 @@
-from airflow.models import DAG
-from airflow.operators.python_operator import PythonOperator, BranchPythonOperator
-from airflow.utils.dates import days_ago
-from airflow.models import Variable
-from logging import info
-
-from pymongo import MongoClient
+#!usr/bin/python
+# -*- coding: utf-8 -*-
 
 import requests
-import pickle
-import os
+
+from airflow.models import DAG, Variable
+from airflow.operators.python_operator import PythonOperator, BranchPythonOperator
+from airflow.utils.dates import days_ago
 
 from bs4 import BeautifulSoup
-
-from slack import WebClient
-from decouple import config
-from slack_test.alertbot import AlertBot
-
 from datetime import date
+from pymongo import MongoClient
+from slack import WebClient
+from slack_bots.alertbot import AlertBot
 
 
-
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36',
-    'referer': 'https://www.google.com/'
-    }
-
-URL = 'https://rocket-league.com/items/shop'
+# Airflow DAG setup
 default_args = {
     'owner': 'fennec-alert-project'
 }
@@ -36,7 +25,7 @@ dag = DAG(
     schedule_interval='@daily'
 )
 
-
+# scraping
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36',
     'referer': 'https://www.google.com/'
@@ -44,18 +33,13 @@ HEADERS = {
 
 URL = 'https://rocket-league.com/items/shop'
 
+res = requests.get(URL, headers=HEADERS)
+soup = BeautifulSoup(res.content, 'lxml')
 
-# # scrape
-# res = requests.get(URL, headers=HEADERS)
-# soup = BeautifulSoup(res.content, 'lxml')
-with open(os.path.join(os.getcwd(),'dags/rl_soup_dump.pkl'), 'rb') as p:
-    soup = pickle.load(p)
+# slack setup
+slack = WebClient(Variable.get('SLACK_BOT_TOKEN'))
 
-# slack set up
-slack = WebClient(config('SLACK_BOT_TOKEN'))
-
-
-# Mongo
+# Mongo setup
 uri = Variable.get('mongo_db_uri')
 client = MongoClient(uri)
 db = client.rl_items
@@ -93,41 +77,37 @@ def scrape_daily_items(**context):
 
 
 def check_shop_item(**context):
-    bodies = ['fennec', 'octane', 'twinzer', 'peregrine']
+    bodies = ['fennec', 'octane', 'twinzer', 'mudcat', 'sentinel']
+
     daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
 
     for item in daily_items:
-        
         for body in bodies:
             if body in item['name'].lower():
-                print(f'Item Found: {item["name"]} -> {body}')
                 is_wanted = True
-                break
-                
+                break            
             else:
                 is_wanted = False
         
         if 'body' in item['category'].lower():
-            print('it is a body')
             is_body = True
         else:
             is_body=False
         
         if is_wanted and is_body:
-            print(f'there it is! lets go spend some money on {item["name"]}: {item["credits"]} credits')
             return 'send_slack_alert'
+    
+    return 'log_to_slack'
 
 
 def load_to_mongo(**context):
-    daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])
-    print(type(daily_items))
-    print(daily_items)
+    daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
     daily_items_collec.insert_many(daily_items[0])
 
 
-def send_slack_alert(**context):
+def send_slack_alert(channel_name, **context,):
     daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
-    alert_bot= AlertBot('#rl-alert', daily_items)
+    alert_bot= AlertBot(channel_name, daily_items)
     message = alert_bot.get_message_payload()
     slack.chat_postMessage(**message)
 
@@ -156,7 +136,15 @@ with dag:
     send_slack_alert_task = PythonOperator(
         task_id='send_slack_alert',
         python_callable=send_slack_alert,
+        op_kwargs={'channel_name': '#rl-alert'},
         provide_context=True
     )
 
-    scrape_daily_items_task >> load_to_mongo_task >> check_shop_item_task >> send_slack_alert_task
+    log_to_slack_task = PythonOperator(
+        task_id='log_to_slack',
+        python_callable=send_slack_alert,
+        op_kwargs={'channel_name': '#rl-logs'},
+        provide_context=True
+    )
+
+    scrape_daily_items_task >> load_to_mongo_task >> check_shop_item_task >> [send_slack_alert_task, log_to_slack_task]
