@@ -101,7 +101,7 @@ def load_to_mongo(**context):
     daily_items_collec = db.daily_items
 
     daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
-    daily_items_collec.insert_many(daily_items[0])
+    daily_items_collec.insert_many(daily_items)
 
 
 def send_slack_alert(channel_name, **context):
