@@ -23,7 +23,6 @@ dag = DAG(
     'fennec-alert',
     start_date=days_ago(1),
     schedule_interval='@daily',
-    execution_timeout=timedelta(minutes=30)
 )
 
 # scraping
@@ -119,12 +118,16 @@ with dag:
         task_id='scrape_daily_items',
         python_callable=scrape_daily_items,
         provide_context=True,
+        execution_timeout=timedelta(minutes=30),
+        retries=5
     )
 
     load_to_mongo_task = PythonOperator(
         task_id='load_to_mongo',
         python_callable=load_to_mongo,
-        provide_context=True
+        provide_context=True,
+        execution_timeout=timedelta(minutes=30),
+        retries=5
     )
 
 
@@ -132,20 +135,26 @@ with dag:
         task_id='check_shop_item',
         python_callable=check_shop_item,
         provide_context=True,
+        execution_timeout=timedelta(minutes=30),
+        retries=5
     )
 
     send_slack_alert_task = PythonOperator(
         task_id='send_slack_alert',
         python_callable=send_slack_alert,
         op_kwargs={'channel_name': '#rl-alert'},
-        provide_context=True
+        provide_context=True,
+        execution_timeout=timedelta(minutes=30),
+        retries=5
     )
 
     log_to_slack_task = PythonOperator(
         task_id='log_to_slack',
         python_callable=send_slack_alert,
         op_kwargs={'channel_name': '#rl-logs'},
-        provide_context=True
+        provide_context=True,
+        execution_timeout=timedelta(minutes=30),
+        retries=5
     )
 
     scrape_daily_items_task >> load_to_mongo_task >> check_shop_item_task >> [send_slack_alert_task, log_to_slack_task]
