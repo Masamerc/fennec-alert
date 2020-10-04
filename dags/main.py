@@ -34,15 +34,6 @@ HEADERS = {
 URL = 'https://rocket-league.com/items/shop'
 
 
-# slack setup
-slack = WebClient(Variable.get('SLACK_BOT_TOKEN'))
-
-# Mongo setup
-uri = Variable.get('mongo_db_uri')
-client = MongoClient(uri)
-db = client.rl_items
-daily_items_collec = db.daily_items
-
 
 def scrape_daily_items(**context):
 
@@ -103,11 +94,19 @@ def check_shop_item(**context):
 
 
 def load_to_mongo(**context):
+    # Mongo setup
+    uri = Variable.get('mongo_db_uri')
+    client = MongoClient(uri)
+    db = client.rl_items
+    daily_items_collec = db.daily_items
+
     daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
     daily_items_collec.insert_many(daily_items[0])
 
 
-def send_slack_alert(channel_name, **context,):
+def send_slack_alert(channel_name, **context):
+    # slack setup
+    slack = WebClient(Variable.get('SLACK_BOT_TOKEN'))
     daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
     alert_bot= AlertBot(channel_name, daily_items)
     message = alert_bot.get_message_payload()
