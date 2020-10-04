@@ -33,8 +33,6 @@ HEADERS = {
 
 URL = 'https://rocket-league.com/items/shop'
 
-res = requests.get(URL, headers=HEADERS)
-soup = BeautifulSoup(res.content, 'lxml')
 
 # slack setup
 slack = WebClient(Variable.get('SLACK_BOT_TOKEN'))
@@ -47,6 +45,10 @@ daily_items_collec = db.daily_items
 
 
 def scrape_daily_items(**context):
+
+    res = requests.get(URL, headers=HEADERS)
+    soup = BeautifulSoup(res.content, 'lxml')
+
     daily_items = []
 
     for div in soup.find_all('div', attrs={'class': 'rlg-item-shop__item-content'}):
