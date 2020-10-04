@@ -8,7 +8,7 @@ from airflow.operators.python_operator import PythonOperator, BranchPythonOperat
 from airflow.utils.dates import days_ago
 
 from bs4 import BeautifulSoup
-from datetime import date
+from datetime import date, timedelta
 from pymongo import MongoClient
 from slack import WebClient
 from slack_bots.alertbot import AlertBot
@@ -22,7 +22,8 @@ default_args = {
 dag = DAG(
     'fennec-alert',
     start_date=days_ago(1),
-    schedule_interval='@daily'
+    schedule_interval='@daily',
+    execution_timeout=timedelta(minutes=30)
 )
 
 # scraping
