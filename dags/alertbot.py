@@ -10,9 +10,13 @@ class AlertBot:
 
     def __init__(self, channel, data):
         self.channel = channel
-        self.data = data
 
-    
+        if type(data) != list: 
+            raise TypeError('data type passed in AlertBot should be list')
+        else:
+            self.data = data        
+
+
     def _parse_result(self):
 
         formatted_text = ''

@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from datetime import date, timedelta
 from pymongo import MongoClient
 from slack import WebClient
-from slack_bots.alertbot import AlertBot
+from alertbot import AlertBot
 
 
 # Airflow DAG setup
@@ -69,13 +69,14 @@ def scrape_daily_items(**context):
     context['ti'].xcom_push(key='daily_items', value=daily_items)
 
 
-def check_shop_item(**context):
-    bodies = ['fennec', 'octane', 'twinzer', 'mudcat', 'sentinel']
+def compare_watchlist_to_shop_items(watchlist: list, daily_items: list) -> bool:
+    """Helper function that checks if items on watchlist are on sale and return applicable task_id"""
 
-    daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
+    if type(daily_items) != list or len(daily_items) <= 0:
+        raise Exception('daily_items has to be a list of strings and cannot be empty')
 
     for item in daily_items:
-        for body in bodies:
+        for body in watchlist:
             if body in item['name'].lower():
                 is_wanted = True
                 break            
@@ -91,6 +92,13 @@ def check_shop_item(**context):
             return 'send_slack_alert'
     
     return 'log_to_slack'
+
+
+def check_shop_item(**context):
+    bodies = ['fennec', 'octane', 'twinzer', 'mudcat', 'sentinel']
+    daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
+
+    return compare_watchlist_to_shop_items(bodies, daily_items)
 
 
 def load_to_mongo(**context):
