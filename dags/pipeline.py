@@ -7,11 +7,11 @@ from airflow.models import DAG, Variable
 from airflow.operators.python_operator import PythonOperator, BranchPythonOperator
 from airflow.utils.dates import days_ago
 
+from alertbot import AlertBot
 from bs4 import BeautifulSoup
 from datetime import date, timedelta
 from pymongo import MongoClient
 from slack import WebClient
-from alertbot import AlertBot
 
 
 # Airflow DAG setup
@@ -25,7 +25,7 @@ dag = DAG(
     schedule_interval='@daily',
 )
 
-# scraping
+
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36',
     'referer': 'https://www.google.com/'
@@ -86,11 +86,13 @@ def compare_watchlist_to_shop_items(watchlist: list, daily_items: list) -> bool:
         if 'body' in item['category'].lower():
             is_body = True
         else:
-            is_body=False
+            is_body = False
         
+        # if any item on wathclist is on sale & its type is "body" return task for sending slack alert
         if is_wanted and is_body:
             return 'send_slack_alert'
     
+    # if the condition above is not met, just log the result to slack
     return 'log_to_slack'
 
 
@@ -115,6 +117,7 @@ def load_to_mongo(**context):
 def send_slack_alert(channel_name, **context):
     # slack setup
     slack = WebClient(Variable.get('SLACK_BOT_TOKEN'))
+
     daily_items = context['ti'].xcom_pull(key='daily_items', task_ids=['scrape_daily_items'])[0]
     alert_bot= AlertBot(channel_name, daily_items)
     message = alert_bot.get_message_payload()
