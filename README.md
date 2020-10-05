@@ -1,5 +1,5 @@
 # Introduction and Motivation
-[![status](https://circleci.com/gh/Masamerc/fennec-alert.svg?style=svg)]
+![status](https://circleci.com/gh/Masamerc/fennec-alert.svg?style=shield)
 
 Airflow pipeline with Slackbot I wrote to get notifications on daily items on https://rocket-league.com/items/shop.
 As you all know (\s), Rocket League is "the high-powered hybrid of arcade-style soccer and vehicular mayhem".
