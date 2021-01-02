@@ -4,7 +4,7 @@
 Airflow pipeline with Slackbot I wrote to get notifications on daily items on https://rocket-league.com/items/shop.
 As you all know (\s), Rocket League is "the high-powered hybrid of arcade-style soccer and vehicular mayhem".
 <p align="center">
-  <img src="assets/fennec-alert-flow.png" />
+  <img src="assets/fennec-alert-flow.svg" />
 </p>
 I am in the process of collecting rare cars in the game, but the problem is - the items changes on daily rotations, thus I have to check what's in store every day.
 
