@@ -8,6 +8,7 @@ I am in the process of collecting rare cars in the game, but the problem is - th
 <p align="center">
   <img src="assets/fennec-alert-flow.svg" />
 </p>
+
 After a couple of months of checking the shop in the morning only to be disappointed, I decided to build a simple airflow pipeline that watches the shop and send me slack message if any of my desired items is in the shop.
 
 <br>
